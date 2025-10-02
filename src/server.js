@@ -20,16 +20,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 dotenv.config();
-const port = process.env.PORT ?? 3000;
+const port = process.env.PORT || 3000;
 
 const app = express();
 
 app.use(logger("dev"));
 app.use(express.json());
 
+// CORS configurado para producción
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -61,15 +67,19 @@ app.get("/", (req, res) =>
   res.json({
     message: "Chat WebSocket API",
     status: "running",
-    docs: `http://localhost:${port}/api-docs`,
+    docs: `${req.protocol}://${req.get("host")}/api-docs`,
   })
 );
+
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", timestamp: new Date().toISOString() });
+});
 
 // Crear servidor HTTP y Socket.IO
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -93,9 +103,9 @@ process.on("unhandledRejection", (reason, promise) => {
     setupSocket(io);
     console.log("Socket.IO configurado");
 
-    server.listen(port, () => {
-      console.log(`Servidor corriendo en http://localhost:${port}`);
-      console.log(`Documentación Swagger en http://localhost:${port}/api-docs`);
+    server.listen(port, "0.0.0.0", () => {
+      console.log(`Servidor corriendo en puerto ${port}`);
+      console.log(`Documentación Swagger disponible en /api-docs`);
     });
   } catch (error) {
     console.error("Error al inicializar el servidor:", error);
