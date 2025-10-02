@@ -1,0 +1,352 @@
+openapi: 3.0.0
+info:
+  title: msg-wb-sockets API
+  description: |
+    API REST para sistema de chat en tiempo real con WebSockets.
+
+    **Características:**
+    - Gestión de usuarios
+    - Salas de chat múltiples
+    - Historial de mensajes
+    - Estado de lectura de mensajes
+    - WebSocket con Socket.IO
+  version: 1.0.0
+  contact:
+    name: API Support
+servers:
+  - url: http://localhost:3001
+    description: Servidor local de desarrollo
+  - url: http://localhost:3000
+    description: Servidor local alternativo
+paths:
+  /:
+    get:
+      summary: Información de la API
+      description: Obtiene información básica sobre el estado de la API
+      tags:
+        - General
+      responses:
+        "200":
+          description: API funcionando correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Chat WebSocket API
+                  status:
+                    type: string
+                    example: running
+  /api/users/join:
+    post:
+      summary: Unirse como usuario
+      description: Crear o obtener un usuario existente. Si el usuario no existe, se crea uno nuevo. Si ya existe, devuelve el usuario existente.
+      tags:
+        - Usuarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+              properties:
+                username:
+                  type: string
+                  description: Nombre de usuario único
+                  example: exampleUser
+                avatar:
+                  type: string
+                  description: URL del avatar del usuario (opcional, se genera automáticamente si no se proporciona)
+                  example: https://example.com/avatar.png
+      responses:
+        "200":
+          description: Usuario creado o encontrado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: ID único del usuario
+                        example: 1
+                      username:
+                        type: string
+                        description: Nombre de usuario
+                        example: exampleUser
+                      avatar:
+                        type: string
+                        description: URL del avatar del usuario
+                        example: https://api.dicebear.com/7.x/avataaars/svg?seed=exampleUser
+                  isNew:
+                    type: boolean
+                    description: Indica si el usuario fue recién creado o ya existía
+                    example: true
+        "400":
+          description: Solicitud inválida (falta el nombre de usuario)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: username required
+        "500":
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: internal
+  /api/rooms:
+    get:
+      summary: Listar salas
+      description: Obtener la lista de todas las salas de chat disponibles. Si se proporciona un userId, se incluye el conteo de mensajes no leídos para ese usuario.
+      tags:
+        - Salas
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: ID del usuario para obtener mensajes no leídos
+          example: 1
+      responses:
+        "200":
+          description: Lista de salas obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      description: Nombre de la sala
+                      example: General
+                    description:
+                      type: string
+                      description: Descripción de la sala
+                      example: Sala general de chat
+                      nullable: true
+                    userCount:
+                      type: integer
+                      description: Número de usuarios únicos que han participado en la sala
+                      example: 5
+                    lastActivity:
+                      type: string
+                      format: date-time
+                      description: Fecha y hora de la última actividad en la sala
+                      example: "2025-10-02T10:30:00.000Z"
+                      nullable: true
+                    unreadCount:
+                      type: integer
+                      description: Número de mensajes no leídos (solo si se proporciona userId)
+                      example: 3
+              examples:
+                withUserId:
+                  summary: Lista de salas con mensajes no leídos
+                  value:
+                    - name: General
+                      description: Sala general de chat
+                      userCount: 5
+                      lastActivity: "2025-10-02T10:30:00.000Z"
+                      unreadCount: 3
+                    - name: Desarrollo
+                      description: Sala para temas de desarrollo
+                      userCount: 2
+                      lastActivity: "2025-10-02T09:15:00.000Z"
+                      unreadCount: 0
+                withoutUserId:
+                  summary: Lista de salas sin información de mensajes no leídos
+                  value:
+                    - name: General
+                      description: Sala general de chat
+                      userCount: 5
+                      lastActivity: "2025-10-02T10:30:00.000Z"
+        "500":
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: internal
+  /api/messages/{roomName}:
+    get:
+      summary: Obtener mensajes de una sala
+      description: Obtener el historial completo de mensajes de una sala específica. Retorna hasta 100 mensajes por defecto ordenados cronológicamente.
+      tags:
+        - Mensajes
+      parameters:
+        - name: roomName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Nombre de la sala de la cual obtener los mensajes
+          example: General
+      responses:
+        "200":
+          description: Historial de mensajes obtenido exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: ID único del mensaje
+                      example: "1"
+                    content:
+                      type: string
+                      description: Contenido del mensaje
+                      example: Hola, ¿cómo están?
+                    username:
+                      type: string
+                      description: Nombre del usuario que envió el mensaje
+                      example: exampleUser
+                    avatar:
+                      type: string
+                      description: URL del avatar del usuario
+                      example: https://api.dicebear.com/7.x/avataaars/svg?seed=exampleUser
+                    timestamp:
+                      type: string
+                      format: date-time
+                      description: Fecha y hora en que se envió el mensaje
+                      example: "2025-10-02T10:30:00.000Z"
+                    userId:
+                      type: integer
+                      description: ID del usuario que envió el mensaje
+                      example: 1
+              examples:
+                messagesExample:
+                  summary: Ejemplo de historial de mensajes
+                  value:
+                    - id: "1"
+                      content: Hola a todos!
+                      username: exampleUser
+                      avatar: https://api.dicebear.com/7.x/avataaars/svg?seed=exampleUser
+                      timestamp: "2025-10-02T10:30:00.000Z"
+                      userId: 1
+                    - id: "2"
+                      content: ¿Cómo están?
+                      username: otherUser
+                      avatar: https://api.dicebear.com/7.x/avataaars/svg?seed=otherUser
+                      timestamp: "2025-10-02T10:32:00.000Z"
+                      userId: 2
+        "500":
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: internal
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID único del usuario
+        username:
+          type: string
+          description: Nombre de usuario
+        avatar:
+          type: string
+          description: URL del avatar
+      required:
+        - id
+        - username
+        - avatar
+    Room:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nombre de la sala
+        description:
+          type: string
+          description: Descripción de la sala
+          nullable: true
+        userCount:
+          type: integer
+          description: Número de usuarios
+        lastActivity:
+          type: string
+          format: date-time
+          description: Última actividad
+          nullable: true
+        unreadCount:
+          type: integer
+          description: Mensajes no leídos
+      required:
+        - name
+        - userCount
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          description: ID único del mensaje
+        content:
+          type: string
+          description: Contenido del mensaje
+        username:
+          type: string
+          description: Usuario que envió el mensaje
+        avatar:
+          type: string
+          description: Avatar del usuario
+        timestamp:
+          type: string
+          format: date-time
+          description: Marca de tiempo
+        userId:
+          type: integer
+          description: ID del usuario
+      required:
+        - id
+        - content
+        - username
+        - avatar
+        - timestamp
+        - userId
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Mensaje de error
+      required:
+        - error
+tags:
+  - name: General
+    description: Información general de la API
+  - name: Usuarios
+    description: Gestión de usuarios del chat
+  - name: Salas
+    description: Gestión de salas de chat
+  - name: Mensajes
+    description: Gestión de mensajes del chat

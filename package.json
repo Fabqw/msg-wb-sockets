@@ -1,0 +1,27 @@
+{
+  "name": "msg-wb-sockets",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.15.1",
+  "dependencies": {
+    "@libsql/client": "0.15.15",
+    "cors": "^2.8.5",
+    "dotenv": "17.2.3",
+    "express": "5.1.0",
+    "morgan": "1.10.1",
+    "socket.io": "4.8.1",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "2.0.22"
+  }
+}
